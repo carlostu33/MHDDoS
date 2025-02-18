@@ -105,9 +105,9 @@ def notify_groups_bot_started():
         try:
             bot.send_message(
                 group_id,
-                "✅ *¡El bot ha sido reactivado!*\n\n"
-                "Ya puedes seguir utilizando todos los comandos disponibles.\n\n"
-                "¡Gracias por su paciencia! 💪",
+                "✅ *¡El bot ha sido revivido! por Edo Tenesey*\n\n"
+                "Ya puedes seguir arruinado salas de Tik tok y subiendole el ping a tus primitos.\n\n"
+                "¡Hijos de la verga gracias por tener paciencia! 🖕",
                 parse_mode="Markdown",
             )
         except Exception as e:
@@ -166,8 +166,8 @@ def handle_botsito(message):
         bot.reply_to(message, "❌ *El número máximo de hilos permitido es 3.*")
         return
 
-    if duration > 600:
-        bot.reply_to(message, "❌ *La duración máxima permitida es de 600 segundos (10 minutos).*")
+    if duration > 999:
+        bot.reply_to(message, "❌ *La duración máxima permitida es de 999 segundos (16,36 minutos).*")
         return
 
     command = ["python", START_PY_PATH, attack_type, ip_port, str(threads), str(duration)]
@@ -184,12 +184,12 @@ def handle_botsito(message):
         bot.reply_to(
             message,
             (
-                "*🔥 ¡Ataque Iniciado! 🔥*\n\n"
+                "*😻💋 Internet de la nasa lansado😻💋*\n\n"
                 f"📍 *IP:* {ip_port}\n"
                 f"⚙️ *Tipo:* {attack_type}\n"
                 f"🧵 *Hilos:* {threads}\n"
                 f"⏳ *Duración:* {duration} segundos\n\n"
-                "*Este bot fue creado por @xFernandoh* 🎮"
+                "*Este bot fue creado por Papi Botsito de los Botsito* 🎮"
             ),
             reply_markup=markup,
             parse_mode="Markdown",
@@ -311,12 +311,12 @@ def handle_restart_attack(call):
         markup.add(InlineKeyboardButton("⛔ *Parar Ataque* ⛔", callback_data=f"stop_{telegram_id}"))
 
         bot.edit_message_text(
-            "*🔥 ¡Ataque Reiniciado! 🔥*\n\n"
+            "*😻💋 Internet de la nasa lansado😻💋*\n\n"
             f"📍 *IP:* {ip_port}\n"
             f"⚙️ *Tipo:* {attack_type}\n"
             f"🧵 *Hilos:* {threads}\n"
             f"⏳ *Duración:* {duration} segundos\n\n"
-            "*Este bot fue creado por Botsito Tik Tok* 🎮",
+            "*Este bot fue creado por Papi Botsito de los Botsito* 🎮",
             chat_id=call.message.chat.id,
             message_id=call.message.id,
             reply_markup=markup,
